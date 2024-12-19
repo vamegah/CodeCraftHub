@@ -1,15 +1,12 @@
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-dotenv.config();
+const User = require('../models/userModel');
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect('mongodb://root:password@localhost:27017');
     console.log('MongoDB connected');
   } catch (error) {
-    console.error('MongoDB connection failed:', error.message);
+    console.error('MongoDB connection error:', error);
     process.exit(1);
   }
 };

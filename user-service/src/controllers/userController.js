@@ -1,39 +1,68 @@
 const User = require('../models/userModel');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-// Register a new user
-const registerUser = async (req, res) => {
-    const { username, email, password } = req.body;
-    try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, email, password: hashedPassword });
-        await newUser.save();
-        res.status(201).json({ message: 'User created successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+
+// User registration
+exports.registerUser = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Check if the username already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Username already exists' });
     }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a new user
+    const newUser = new User({ username, password: hashedPassword });
+    await newUser.save();
+
+    return res.status(201).json({ message: 'User registered successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
-// Login user
-const loginUser = async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+
+// User login
+exports.loginUser = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Check if the username exists
+    const existingUser = await User.findOne({ username });
+    if (!existingUser) {
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
+
+    // Check if the password is correct
+    const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Generate a JSON Web Token (JWT)
+    const token = jwt.sign({ username: existingUser.username }, '60ffb8d78e724c02799b34b8f1db94bbdbcf4c415fa8bdecd837bbda28fbab8e', { expiresIn: '1h' });
+
+    return res.status(200).json({ token });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
-// Add more user-related functions (e.g., get user, update user, etc.)
-module.exports = { registerUser, loginUser };
+
+// User profile management
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { newUsername } = req.body;
+
+    // Update the user's username
+    await User.updateOne({ username }, { username: newUsername });
+
+    return res.status(200).json({ message: 'User profile updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
